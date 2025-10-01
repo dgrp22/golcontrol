@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gol Control - Reservar</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <img src="img/logotipo.png" alt="Gol Control" class="logo-img">
+  </aside>
+
+  <!-- Content -->
+  <main class="content">
+    <div class="center-wrap">
+      <div class="calendar-container">
+        <header class="calendar-header">
+          <button id="prev" class="btn-neon">◀</button>
+          <h2 id="monthYear">Septiembre 2025</h2>
+          <button id="next" class="btn-neon">▶</button>
+        </header>
+		
+        <!-- Cabecera de días -->
+        <div class="calendar-days-header">
+          <div>L</div>
+          <div>M</div>
+          <div>M</div>
+          <div>J</div>
+          <div>V</div>
+          <div>S</div>
+          <div>D</div>
+        </div>
+
+        <!-- Grid de días -->
+        <div class="calendar-grid" id="calendar">
+          <!-- JS inserta los días -->
+        </div>
+      </div>
+    </div>
+  </main>
+
+
+<!-- Modal de horarios -->
+<div id="modal" class="modal">
+  <div class="modal-content">
+    <span id="closeModal" class="close">&times;</span>
+    <h3 id="selectedDay"></h3>
+
+    <!-- 🔥 Pestañas de canchas -->
+    <div class="tabs">
+      <button class="tab-btn active" data-cancha="C1">Cancha C1</button>
+      <button class="tab-btn" data-cancha="C2">Cancha C2</button>
+      <button class="tab-btn" data-cancha="C3">Cancha C3</button>
+    </div>
+
+    <!-- Grid de horarios -->
+    <div class="hours-grid" id="hoursGrid"><!-- JS genera horarios --></div>
+
+    <!-- Botón historial del día -->
+    <div class="calendar-footer">
+      <button id="viewDayHistory" class="btn-neon">Ver historial del día</button>
+    </div>
+  </div>
+</div>
+
+
+
+ 
+  <!-- Modal de reserva -->
+  <div id="reserveModal" class="modal">
+    <div class="modal-content">
+      <span id="closeReserveModal" class="close">&times;</span>
+      <h3 id="selectedHour"></h3>
+      <form id="reserveForm">
+		<label>Duración</label>
+		<select id="duracion">
+		<option value="1">1 hora</option>
+		<option value="2">2 horas</option>
+		<option value="3">3 horas</option>
+		<option value="4">4 horas</option>
+		<option value="5">5 horas</option>
+		<option value="6">6 horas</option>
+		<option value="7">7 horas</option>
+		<option value="8">8 horas</option>
+		<option value="9">9 horas</option>
+		<option value="10">10 horas</option>
+		<option value="11">11 horas</option>
+		<option value="12">12 horas</option>
+		</select>
+        <label>Cliente</label>
+        <input type="text" id="cliente" required>
+
+        <label>Celular</label>
+        <input type="number" id="celular" required>
+
+        <label>Cancha</label>
+        <select id="cancha">
+          <option value="C1">C1</option>
+          <option value="C2">C2</option>
+          <option value="C3">C3</option>
+        </select>
+
+        <label>Costo</label>
+        <input type="text" id="costo" readonly>
+
+        <label>Abono</label>
+        <input type="number" id="abono" required>
+
+        <button type="submit" class="btn-neon black-text">Guardar Reserva</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal historial del día -->
+  <div id="dayHistoryModal" class="modal">
+    <div class="modal-content">
+      <span id="closeDayHistory" class="close">&times;</span>
+      <h3 id="dayHistoryTitle"></h3>
+      <div id="dayHistoryContent"><!-- JS genera reservas del día --></div>
+    </div>
+  </div>
+
+  <script src="js/calendar2.js"></script>
+</body>
+</html>
