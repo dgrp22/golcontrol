@@ -31,3 +31,4 @@ jobs:
           app_location: "/"        # Tu index.html está en la raíz del repo
           api_location: ""         # No tienes API, lo dejamos vacío
           output_location: ""      # No hay carpeta de build, lo dejamos vacío
+
