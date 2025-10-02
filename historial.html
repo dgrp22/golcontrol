@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gol Control - Historial</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <img src="img/logotipo.png" alt="Gol Control" class="logo-img">
+  </aside>
+
+  <!-- Content -->
+  <main class="content">
+    <div class="center-wrap">
+      <div id="historial">
+        <h2>Historial de Reservas</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Hora</th>
+              <th>Cliente</th>
+              <th>Celular</th>
+              <th>Cancha</th>
+              <th>Costo</th>
+              <th>Abono</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="historialBody">
+            <!-- Aquí luego se insertarán las filas dinámicamente con JS/Python -->
+            <tr>
+              <td data-label="Fecha">25/09/2025</td>
+              <td data-label="Hora">19:00</td>
+              <td data-label="Cliente">Juan Pérez</td>
+              <td data-label="Celular">987654321</td>
+              <td data-label="Cancha">C1</td>
+              <td data-label="Costo">S/ 60</td>
+              <td data-label="Abono">S/ 30</td>
+              <td data-label="Estado">Parcial</td>
+              <td data-label="Acciones">
+                <button class="btn-pagar">Pagar Saldo</button>
+                <button class="btn-eliminar">Eliminar</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Botón volver -->
+        <div class="calendar-footer">
+          <a href="reservar.html" class="btn-neon">Volver</a>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
