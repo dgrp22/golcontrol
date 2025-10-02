@@ -36,10 +36,11 @@ def register():
         conn.close()
 
         # Después del registro, redirige al login
-        return redirect("https://TU_STATIC_WEB.azurestaticapps.net/index.html")
+        return redirect("https://kind-desert-05fafcb0f.2.azurestaticapps.net/index.html")
 
     except Exception as e:
         return f"Error al registrar: {str(e)}", 500
     
 if __name__ == "__main__":
     app.run(debug=True)
+
