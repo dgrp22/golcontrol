@@ -400,7 +400,7 @@ body{
 
 .form-grid input {
   width: 100%;
-  padding: 10px;
+  padding: 6px;
   border-radius: 5px;
   border: 1px solid #ccc;
   background-color: #111;
@@ -414,13 +414,34 @@ body{
 
 .link-login {
   color: #fff;
-  margin-top: 15px;
+  margin-top: 12px;
   text-align: center;
 }
 
 .link-login a {
   color: var(--gold);
   font-weight: bold;
+}
+
+/* Formulario en 2 columnas */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px 12px; /* espacio entre filas y columnas */
+}
+
+.form-grid div {
+  display: flex;
+  flex-direction: column;
+}
+
+.full-width {
+  grid-column: span 2; /* ocupa las dos columnas */
+}
+
+.form-button {
+  text-align: center;
+
 }
 
 /* ===== Responsive ===== */
