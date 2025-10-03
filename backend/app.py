@@ -1,9 +1,15 @@
-from flask import Flask, request, redirect
+from flask import Flask, request, redirect, session
+from flask_session import Session
 from flask_cors import CORS
 import pyodbc
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "https://kind-desert-05fafcb0f.2.azurestaticapps.net"}})
+
+# Configuración de sesiones
+app.config["SESSION_TYPE"] = "filesystem"
+app.secret_key = "clave-super-secreta"  # cámbiala en producción
+Session(app)
 
 # Conexión a Azure SQL
 conn_str = (
@@ -58,6 +64,7 @@ def login():
         conn.close()
 
         if row:
+            session["dueno_id"] = row.id  # Guardamos el dueño logueado
             return redirect("https://kind-desert-05fafcb0f.2.azurestaticapps.net/inicio.html")
         else:
             return """
@@ -73,9 +80,12 @@ def login():
 @app.route('/reservar', methods=['POST'])
 def reservar():
     try:
+        if "dueno_id" not in session:
+            return {"ok": False, "error": "Sesión no iniciada"}, 401
+
+        dueno_id = session["dueno_id"]  # dueño logueado
         data = request.json  
 
-        dueno_id   = 1  # ⚡ ejemplo: por ahora fijo, luego lo tomas del login
         cancha_id  = data.get("cancha_id")   
         fecha      = data["fecha"]              
         hora_inicio= data["hora_inicio"]        
@@ -85,7 +95,7 @@ def reservar():
         abono      = float(data["abono"])
         precio     = float(data["precio_total"])
 
-        # calcular estado_pago automáticamente
+        # Calcular estado_pago automáticamente
         if abono == 0:
             estado_pago = "No Abono"
         elif abono < precio:
