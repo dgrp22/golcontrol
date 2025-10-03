@@ -218,13 +218,13 @@ duracionSelect.onchange = actualizarCostoPreview;
 reserveForm.onsubmit = async (e) => {
   e.preventDefault();
 
-  const cliente = document.getElementById("cliente").value.trim();
-  const celular = document.getElementById("celular").value.trim();
-  const cancha  = activeCancha;
-  const abono   = parseFloat(document.getElementById("abono").value) || 0;
+  const cliente  = document.getElementById("cliente").value.trim();
+  const celular  = document.getElementById("celular").value.trim();
+  const cancha   = activeCancha;
+  const abono    = parseFloat(document.getElementById("abono").value) || 0;
   const duracion = parseInt(duracionSelect.value, 10) || 1;
 
-  const key = dateKey(lastYear, lastMonth, lastDay); // yyyy-mm-dd
+  const key   = dateKey(lastYear, lastMonth, lastDay); // yyyy-mm-dd
   const fecha = key;
   const horaInicio = `${pad(selectedHour)}:00`;
   const horaFin    = `${pad(selectedHour + duracion)}:00`;
@@ -232,32 +232,33 @@ reserveForm.onsubmit = async (e) => {
   let costoTotal = 0;
   for (let h = selectedHour; h < selectedHour + duracion; h++) costoTotal += costoHora(h);
 
-  let estado_pago = "No Abono";
-  if (abono >= costoTotal) estado_pago = "Pagado";
-  else if (abono > 0) estado_pago = "Parcial";
-
-  const estado_reserva = "Activa";
+  // 🔥 Recuperar dueño logueado
+  const dueno_id = localStorage.getItem("dueno_id");
+  if (!dueno_id) {
+    alert("❌ No se encontró dueño logueado. Inicia sesión de nuevo.");
+    return;
+  }
 
   try {
     const res = await fetch("https://golcontrol-g7gkhdbbg2hbgma8.canadacentral-01.azurewebsites.net/reservar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        cliente_id: 0,
-        cancha_id: cancha === "C1" ? 1 : cancha === "C2" ? 2 : 3, // ejemplo
+        dueno_id,                                 // 👈 ahora enviamos el dueño
+        cancha_id: cancha === "C1" ? 1 : cancha === "C2" ? 2 : 3,
         fecha,
         hora_inicio: horaInicio,
         hora_fin: horaFin,
         nombre_cliente: cliente,
         celular,
         abono,
-        precio_total: costoTotal,
-        estado_pago,
-        estado_reserva
+        precio_total: costoTotal
       })
     });
+
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || "Error desconocido");
+
     alert("✅ Reserva guardada en BD");
   } catch (err) {
     console.error(err);
@@ -268,6 +269,7 @@ reserveForm.onsubmit = async (e) => {
   reserveForm.reset();
   renderHoras(lastDay, lastMonth, lastYear, cancha);
 };
+
 
 
 // ---------- historial ----------
