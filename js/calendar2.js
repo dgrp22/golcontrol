@@ -89,14 +89,52 @@ function renderCalendar(month, year) {
 }
 
 // ---------- abrir modal de horarios ----------
-function openModal(day, month, year) {
+async function openModal(day, month, year) {
   lastDay = day; lastMonth = month; lastYear = year;
   selectedDay.textContent = `Horarios ${day}/${month + 1}/${year}`;
 
-  renderHoras(day, month, year, activeCancha);
+  const fecha = dateKey(year, month, day); // yyyy-mm-dd
+  const cancha_id = activeCancha === "C1" ? 1 : activeCancha === "C2" ? 2 : 3;
 
+  try {
+    const res = await fetch(`https://golcontrol-g7gkhdbbg2hbgma8.canadacentral-01.azurewebsites.net/reservas?fecha=${fecha}&cancha_id=${cancha_id}`);
+    const data = await res.json();
+    if (data.ok) {
+      // limpiar estado anterior
+      reservas[fecha] = {};
+      reservas[fecha][activeCancha] = {};
+
+      // cargar reservas desde el servidor
+      data.reservas.forEach(r => {
+        const startHour = parseInt(r.hora_inicio.split(":")[0]);
+        const endHour = parseInt(r.hora_fin.split(":")[0]) - 1;
+        let estado = "available";
+        if (r.estado_pago === "Pagado") estado = "reserved";
+        else if (r.estado_pago === "Parcial") estado = "partial";
+        else estado = "noabono";
+
+        for (let h = startHour; h <= endHour; h++) {
+          reservas[fecha][activeCancha][h] = {
+            cliente: r.nombre_cliente,
+            celular: r.celular,
+            cancha: activeCancha,
+            abono: r.abono,
+            costo: r.precio_total,
+            estado,
+            startHour,
+            duracion: endHour - startHour + 1
+          };
+        }
+      });
+    }
+  } catch (err) {
+    console.error("❌ Error cargando reservas", err);
+  }
+
+  renderHoras(day, month, year, activeCancha);
   modal.style.display = "flex";
 }
+
 
 // Renderiza horarios según cancha activa
 function renderHoras(day, month, year, cancha) {
@@ -177,7 +215,7 @@ function openReserveModal(day, month, year, hour, cancha) {
 duracionSelect.onchange = actualizarCostoPreview;
 
 // ---------- guardar reserva ----------
-reserveForm.onsubmit = (e) => {
+reserveForm.onsubmit = async (e) => {
   e.preventDefault();
 
   const cliente = document.getElementById("cliente").value.trim();
@@ -186,49 +224,51 @@ reserveForm.onsubmit = (e) => {
   const abono   = parseFloat(document.getElementById("abono").value) || 0;
   const duracion = parseInt(duracionSelect.value, 10) || 1;
 
-  const key = dateKey(lastYear, lastMonth, lastDay);
-  if (!reservas[key]) reservas[key] = {};
-  if (!reservas[key][cancha]) reservas[key][cancha] = {};
-
-  const endHour = selectedHour + duracion - 1;
-  if (endHour > 23) {
-    alert("La duración seleccionada se pasa de las 23:00.");
-    return;
-  }
-
-  // Validar solapamientos en esa cancha
-  for (let h = selectedHour; h <= endHour; h++) {
-    if (reservas[key][cancha][h]) {
-      alert(`La hora ${h}:00 ya está ocupada en ${cancha}.`);
-      return;
-    }
-  }
+  const key = dateKey(lastYear, lastMonth, lastDay); // yyyy-mm-dd
+  const fecha = key;
+  const horaInicio = `${pad(selectedHour)}:00`;
+  const horaFin    = `${pad(selectedHour + duracion)}:00`;
 
   let costoTotal = 0;
-  for (let h = selectedHour; h <= endHour; h++) costoTotal += costoHora(h);
+  for (let h = selectedHour; h < selectedHour + duracion; h++) costoTotal += costoHora(h);
 
-  let estado = "available";
-  if (abono === 0) estado = "noabono";
-  else if (abono >= costoTotal) estado = "reserved";
-  else estado = "partial";
+  let estado_pago = "No Abono";
+  if (abono >= costoTotal) estado_pago = "Pagado";
+  else if (abono > 0) estado_pago = "Parcial";
 
-  const groupId = `${key}-${cancha}-${selectedHour}-${Date.now()}`;
+  const estado_reserva = "Activa";
 
-  for (let h = selectedHour; h <= endHour; h++) {
-    reservas[key][cancha][h] = {
-      cliente, celular, cancha,
-      abono, costo: costoTotal,
-      estado, groupId,
-      startHour: selectedHour,
-      duracion
-    };
+  try {
+    const res = await fetch("https://golcontrol-g7gkhdbbg2hbgma8.canadacentral-01.azurewebsites.net/reservar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cliente_id: 0,
+        cancha_id: cancha === "C1" ? 1 : cancha === "C2" ? 2 : 3, // ejemplo
+        fecha,
+        hora_inicio: horaInicio,
+        hora_fin: horaFin,
+        nombre_cliente: cliente,
+        celular,
+        abono,
+        precio_total: costoTotal,
+        estado_pago,
+        estado_reserva
+      })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "Error desconocido");
+    alert("✅ Reserva guardada en BD");
+  } catch (err) {
+    console.error(err);
+    alert("❌ Error al guardar en el servidor: " + err.message);
   }
 
   reserveModal.style.display = "none";
   reserveForm.reset();
-
   renderHoras(lastDay, lastMonth, lastYear, cancha);
 };
+
 
 // ---------- historial ----------
 viewDayHistory.onclick = () => {
