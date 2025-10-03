@@ -1,8 +1,9 @@
 from flask import Flask, request, redirect
+from flask_cors import CORS
 import pyodbc
 
 app = Flask(__name__)
-
+CORS(app, resources={r"/*": {"origins": "https://kind-desert-05fafcb0f.2.azurestaticapps.net"}})
 # Conexión a Azure SQL
 conn_str = (
     "Driver={ODBC Driver 17 for SQL Server};"
