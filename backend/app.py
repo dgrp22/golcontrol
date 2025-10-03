@@ -1,15 +1,9 @@
-from flask import Flask, request, redirect, session
-from flask_session import Session
+from flask import Flask, request
 from flask_cors import CORS
 import pyodbc
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "https://kind-desert-05fafcb0f.2.azurestaticapps.net"}})
-
-# Configuración de sesiones
-app.config["SESSION_TYPE"] = "filesystem"
-app.secret_key = "clave-super-secreta"  # cámbiala en producción
-Session(app)
 
 # Conexión a Azure SQL
 conn_str = (
@@ -27,15 +21,15 @@ def home():
 # --- Registrar clientes ---
 @app.route('/register', methods=['POST'])
 def register():
-    nombre_negocio = request.form['nombre_negocio']
-    direccion = request.form['direccion']
-    contacto = request.form['contacto']
-    correo = request.form['correo']
-    telefono = request.form['telefono']
-    usuario = request.form['user']
-    password = request.form['pass']
-
     try:
+        nombre_negocio = request.form['nombre_negocio']
+        direccion = request.form['direccion']
+        contacto = request.form['contacto']
+        correo = request.form['correo']
+        telefono = request.form['telefono']
+        usuario = request.form['user']
+        password = request.form['pass']
+
         conn = pyodbc.connect(conn_str)
         cursor = conn.cursor()
         cursor.execute("""
@@ -44,49 +38,42 @@ def register():
         """, (nombre_negocio, direccion, contacto, correo, telefono, usuario, password))
         conn.commit()
         conn.close()
-        return redirect("https://kind-desert-05fafcb0f.2.azurestaticapps.net/index.html")
+
+        return {"ok": True, "msg": "Cliente registrado correctamente"}
     except Exception as e:
-        return f"Error al registrar: {str(e)}", 500
+        return {"ok": False, "error": str(e)}, 500
 
 # --- Login ---
 @app.route('/login', methods=['POST'])
 def login():
-    usuario = request.form['user']
-    password = request.form['pass']
     try:
+        usuario = request.form['user']
+        password = request.form['pass']
+
         conn = pyodbc.connect(conn_str)
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT id FROM dbo.clientes
+            SELECT id, nombre_negocio FROM dbo.clientes
             WHERE usuario_login = ? AND password_hash = ?
         """, (usuario, password))
         row = cursor.fetchone()
         conn.close()
 
         if row:
-            session["dueno_id"] = row.id  # Guardamos el dueño logueado
-            return redirect("https://kind-desert-05fafcb0f.2.azurestaticapps.net/inicio.html")
+            return {"ok": True, "dueno_id": row.id, "nombre_negocio": row.nombre_negocio}
         else:
-            return """
-            <html><body style="font-family:Arial;text-align:center;margin-top:50px;">
-            <h2 style="color:red;">❌ Usuario o contraseña incorrectos</h2>
-            <a href='https://kind-desert-05fafcb0f.2.azurestaticapps.net/index.html'>Volver al login</a>
-            </body></html>
-            """
+            return {"ok": False, "error": "Usuario o contraseña incorrectos"}, 401
     except Exception as e:
-        return f"❌ Error al iniciar sesión: {str(e)}", 500
+        return {"ok": False, "error": str(e)}, 500
 
 # --- Guardar reserva ---
 @app.route('/reservar', methods=['POST'])
 def reservar():
     try:
-        if "dueno_id" not in session:
-            return {"ok": False, "error": "Sesión no iniciada"}, 401
-
-        dueno_id = session["dueno_id"]  # dueño logueado
         data = request.json  
 
-        cancha_id  = data.get("cancha_id")   
+        dueno_id   = data["dueno_id"]  
+        cancha_id  = data["cancha_id"]   
         fecha      = data["fecha"]              
         hora_inicio= data["hora_inicio"]        
         hora_fin   = data["hora_fin"]           
