@@ -79,34 +79,34 @@ def login():
 @app.route('/reservar', methods=['POST'])
 def reservar():
     try:
-        data = request.json  # recibe JSON desde JS
+        data = request.json  
 
-        cliente_id = data.get("cliente_id", 0)  # si manejas clientes registrados
-        cancha_id  = data.get("cancha_id", 0)   # si manejas catálogo de canchas
-        fecha      = data["fecha"]              # "2025-10-03"
-        hora_inicio= data["hora_inicio"]        # "09:00"
-        hora_fin   = data["hora_fin"]           # "11:00"
-        nombre     = data["nombre_cliente"]
-        celular    = data.get("celular")
+        dueno_id   = 1  # 🔥 Ejemplo: aquí deberías usar el id del dueño logueado (por ahora fijo para probar)
+        cancha_id  = data.get("cancha_id", 0)   
+        fecha      = data["fecha"]              
+        hora_inicio= data["hora_inicio"]        
+        hora_fin   = data["hora_fin"]           
+        nombre     = data["nombre_cliente"]     # jugador
+        celular    = data.get("celular")        # jugador
         abono      = data["abono"]
         precio     = data["precio_total"]
-        estado_pago= data["estado_pago"]        # "Pagado", "Parcial", etc.
-        estado_reserva = data["estado_reserva"] # "Activa", "Anulada", etc.
+        estado_pago= data["estado_pago"]        
+        estado_reserva = data["estado_reserva"] 
 
         conn = pyodbc.connect(conn_str)
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO dbo.reservas 
-            (cliente_id, cancha_id, fecha, hora_inicio, hora_fin, nombre_cliente, celular, abono, precio_total, estado_pago, estado_reserva)
+            (dueno_id, cancha_id, fecha, hora_inicio, hora_fin, nombre_cliente, celular, abono, precio_total, estado_pago, estado_reserva)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (cliente_id, cancha_id, fecha, hora_inicio, hora_fin, nombre, celular, abono, precio, estado_pago, estado_reserva))
+        """, (dueno_id, cancha_id, fecha, hora_inicio, hora_fin, nombre, celular, abono, precio, estado_pago, estado_reserva))
         conn.commit()
         conn.close()
 
         return {"ok": True, "msg": "Reserva guardada correctamente"}
     except Exception as e:
         return {"ok": False, "error": str(e)}, 500
-
+    
 
 # --- Obtener reservas por fecha y cancha ---
 @app.route('/reservas', methods=['GET'])
