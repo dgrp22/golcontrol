@@ -42,10 +42,7 @@ let activeCancha = "C1"; // por defecto
 const pad = n => String(n).padStart(2,"0");
 const dateKey = (y,m,d) => `${y}-${pad(m+1)}-${pad(d)}`; 
 const costoHora = h => (h < 18 ? 60 : 100);
-const rangoTexto = (start, dur) => {
-  const end = start + dur;
-  return `${pad(start)}:00–${pad(end)}:00`;
-};
+const rangoTexto = (start, dur) => `${pad(start)}:00–${pad(start + dur)}:00`;
 
 function estadoTexto(e) {
   if (e === "noabono") return "Reservado sin abono";
@@ -93,18 +90,16 @@ async function openModal(day, month, year) {
   lastDay = day; lastMonth = month; lastYear = year;
   selectedDay.textContent = `Horarios ${day}/${month + 1}/${year}`;
 
-  const fecha = dateKey(year, month, day); // yyyy-mm-dd
+  const fecha = dateKey(year, month, day);
   const cancha_id = activeCancha === "C1" ? 1 : activeCancha === "C2" ? 2 : 3;
 
   try {
     const res = await fetch(`https://golcontrol-g7gkhdbbg2hbgma8.canadacentral-01.azurewebsites.net/reservas?fecha=${fecha}&cancha_id=${cancha_id}`);
     const data = await res.json();
     if (data.ok) {
-      // limpiar estado anterior
       reservas[fecha] = {};
       reservas[fecha][activeCancha] = {};
 
-      // cargar reservas desde el servidor
       data.reservas.forEach(r => {
         const startHour = parseInt(r.hora_inicio.split(":")[0]);
         const endHour = parseInt(r.hora_fin.split(":")[0]) - 1;
@@ -115,6 +110,7 @@ async function openModal(day, month, year) {
 
         for (let h = startHour; h <= endHour; h++) {
           reservas[fecha][activeCancha][h] = {
+            reserva_id: r.reserva_id || null,
             cliente: r.nombre_cliente,
             celular: r.celular,
             cancha: activeCancha,
@@ -135,11 +131,9 @@ async function openModal(day, month, year) {
   modal.style.display = "flex";
 }
 
-
-// Renderiza horarios según cancha activa
+// ---------- render horas ----------
 function renderHoras(day, month, year, cancha) {
   hoursGrid.innerHTML = "";
-
   const key = dateKey(year, month, day);
   if (!reservas[key]) reservas[key] = {};
   if (!reservas[key][cancha]) reservas[key][cancha] = {};
@@ -157,11 +151,11 @@ function renderHoras(day, month, year, cancha) {
     slot.classList.add(estado);
     slot.textContent = `${h}:00`;
     if (estado === "available") {
-  slot.onclick = () => openReserveModal(day, month, year, h, cancha);
-} else {
-  slot.style.pointerEvents = "none";  // 🔒 bloquea clics
-  slot.style.opacity = "0.6";         // 🔍 visual de inactivo
-}
+      slot.onclick = () => openReserveModal(day, month, year, h, cancha);
+    } else {
+      slot.style.pointerEvents = "none";
+      slot.style.opacity = "0.6";
+    }
 
     hoursGrid.appendChild(slot);
   }
@@ -173,19 +167,14 @@ tabButtons.forEach(btn => {
     tabButtons.forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     activeCancha = btn.dataset.cancha;
-
-    if (lastDay !== null) {
-      renderHoras(lastDay, lastMonth, lastYear, activeCancha);
-    }
+    if (lastDay !== null) renderHoras(lastDay, lastMonth, lastYear, activeCancha);
   });
 });
 
 // ---------- abrir formulario ----------
 function buildDurationOptions(startHour) {
   const maxByHour = 24 - startHour;
-  const MAX_CAP   = 12;
-  const limit = Math.min(maxByHour, MAX_CAP);
-
+  const limit = Math.min(maxByHour, 12);
   duracionSelect.innerHTML = "";
   for (let i = 1; i <= limit; i++) {
     const opt = document.createElement("option");
@@ -207,7 +196,6 @@ function openReserveModal(day, month, year, hour, cancha) {
   modal.style.display = "none";
   reserveModal.style.display = "flex";
   selectedHourText.textContent = `Reserva ${day}/${month+1}/${year} - ${hour}:00 (${cancha})`;
-
   buildDurationOptions(hour);
   actualizarCostoPreview();
 }
@@ -218,21 +206,20 @@ duracionSelect.onchange = actualizarCostoPreview;
 reserveForm.onsubmit = async (e) => {
   e.preventDefault();
 
-  const cliente  = document.getElementById("cliente").value.trim();
-  const celular  = document.getElementById("celular").value.trim();
-  const cancha   = activeCancha;
-  const abono    = parseFloat(document.getElementById("abono").value) || 0;
+  const cliente = document.getElementById("cliente").value.trim();
+  const celular = document.getElementById("celular").value.trim();
+  const cancha  = activeCancha;
+  const abono   = parseFloat(document.getElementById("abono").value) || 0;
   const duracion = parseInt(duracionSelect.value, 10) || 1;
 
-  const key   = dateKey(lastYear, lastMonth, lastDay); // yyyy-mm-dd
+  const key = dateKey(lastYear, lastMonth, lastDay);
   const fecha = key;
   const horaInicio = `${pad(selectedHour)}:00`;
-  const horaFin    = `${pad(selectedHour + duracion)}:00`;
+  const horaFin = `${pad(selectedHour + duracion)}:00`;
 
   let costoTotal = 0;
   for (let h = selectedHour; h < selectedHour + duracion; h++) costoTotal += costoHora(h);
 
-  // 🔥 Recuperar dueño logueado
   const dueno_id = localStorage.getItem("dueno_id");
   if (!dueno_id) {
     alert("❌ No se encontró dueño logueado. Inicia sesión de nuevo.");
@@ -244,7 +231,7 @@ reserveForm.onsubmit = async (e) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        dueno_id,                                 // 👈 ahora enviamos el dueño
+        dueno_id,
         cancha_id: cancha === "C1" ? 1 : cancha === "C2" ? 2 : 3,
         fecha,
         hora_inicio: horaInicio,
@@ -258,22 +245,18 @@ reserveForm.onsubmit = async (e) => {
 
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || "Error desconocido");
-
-    alert("✅ Reserva guardada en BD");
+    alert("✅ Reserva guardada correctamente");
+    await openModal(lastDay, lastMonth, lastYear);
   } catch (err) {
-    console.error(err);
-    alert("❌ Error al guardar en el servidor: " + err.message);
+    alert("❌ Error al guardar: " + err.message);
   }
 
   reserveModal.style.display = "none";
   reserveForm.reset();
-  renderHoras(lastDay, lastMonth, lastYear, cancha);
 };
 
-
-
 // ---------- historial ----------
-viewDayHistory.onclick = () => {
+viewDayHistory.onclick = async () => {
   const key = dateKey(lastYear, lastMonth, lastDay);
   dayHistoryTitle.textContent = `Historial ${lastDay}/${lastMonth+1}/${lastYear}`;
   dayHistoryContent.innerHTML = "";
@@ -286,12 +269,11 @@ viewDayHistory.onclick = () => {
     return;
   }
 
-  // Agrupar por groupId en todas las canchas
   const groups = {};
   Object.keys(dayData).forEach(cancha => {
     Object.values(dayData[cancha]).forEach(r => {
-      const gid = r.groupId;
-      if (!groups[gid]) groups[gid] = r;
+      if (!r || !r.reserva_id) return;
+      groups[r.reserva_id] = r;
     });
   });
 
@@ -307,49 +289,60 @@ viewDayHistory.onclick = () => {
       <p><b>⚽ Cancha:</b> ${g.cancha}</p>
       <p><b>💵 Costo:</b> S/${g.costo} | <b>Abono:</b> S/${g.abono}</p>
       <p><b>Estado:</b> ${estadoTexto(g.estado)}</p>
-      ${g.estado !== "reserved" ? `<button class="btn-pagar" onclick="pagarSaldoGrupo('${key}','${g.groupId}')">Pagar saldo</button>` : ""}
-      <button class="btn-eliminar" onclick="eliminarReservaGrupo('${key}','${g.groupId}')">Eliminar</button>
+      ${g.estado !== "reserved" ? `<button class="btn-pagar" data-id="${g.reserva_id}">💰 Pagar saldo</button>` : ""}
+      <button class="btn-eliminar" data-id="${g.reserva_id}">❌ Eliminar</button>
     `;
     dayHistoryContent.appendChild(card);
+  });
+
+  // Pagar saldo
+  dayHistoryContent.querySelectorAll(".btn-pagar").forEach(btn => {
+    btn.onclick = async () => {
+      const monto = prompt("Monto del abono (S/):", "0");
+      const m = parseFloat(monto || "0");
+      if (m <= 0) return;
+
+      try {
+        const res = await fetch("https://golcontrol-g7gkhdbbg2hbgma8.canadacentral-01.azurewebsites.net/abonar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reserva_id: btn.dataset.id, monto_abono: m })
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Error abonar");
+        alert(`✅ Abono registrado. Total abonado: S/${data.total_abonos}`);
+        await openModal(lastDay, lastMonth, lastYear);
+        dayHistoryModal.style.display = "none";
+      } catch (err) {
+        alert("❌ " + err.message);
+      }
+    };
+  });
+
+  // Eliminar reserva
+  dayHistoryContent.querySelectorAll(".btn-eliminar").forEach(btn => {
+    btn.onclick = async () => {
+      if (!confirm("¿Anular esta reserva?")) return;
+      try {
+        const res = await fetch("https://golcontrol-g7gkhdbbg2hbgma8.canadacentral-01.azurewebsites.net/anular_reserva", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reserva_id: btn.dataset.id })
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Error anular");
+        alert("✅ Reserva anulada correctamente");
+        await openModal(lastDay, lastMonth, lastYear);
+        dayHistoryModal.style.display = "none";
+      } catch (err) {
+        alert("❌ " + err.message);
+      }
+    };
   });
 
   modal.style.display = "none";
   dayHistoryModal.style.display = "flex";
 };
-
-// ---------- acciones del historial ----------
-function pagarSaldoGrupo(key, groupId) {
-  const dayData = reservas[key];
-  if (!dayData) return;
-
-  Object.keys(dayData).forEach(c => {
-    Object.keys(dayData[c]).forEach(h => {
-      if (dayData[c][h].groupId === groupId) {
-        dayData[c][h].abono = dayData[c][h].costo;
-        dayData[c][h].estado = "reserved";
-      }
-    });
-  });
-
-  renderHoras(lastDay, lastMonth, lastYear, activeCancha);
-  viewDayHistory.onclick();
-}
-
-function eliminarReservaGrupo(key, groupId) {
-  const dayData = reservas[key];
-  if (!dayData) return;
-
-  Object.keys(dayData).forEach(c => {
-    Object.keys(dayData[c]).forEach(h => {
-      if (dayData[c][h].groupId === groupId) {
-        delete dayData[c][h];
-      }
-    });
-  });
-
-  renderHoras(lastDay, lastMonth, lastYear, activeCancha);
-  viewDayHistory.onclick();
-}
 
 // ---------- cerrar modales ----------
 closeModal.onclick = () => (modal.style.display = "none");
