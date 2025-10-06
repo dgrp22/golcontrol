@@ -47,22 +47,37 @@ def register():
 @app.route('/login', methods=['POST'])
 def login():
     try:
-        usuario = request.form['user']
-        password = request.form['pass']
+        # ✅ Detectar si viene JSON o FormData
+        if request.is_json:
+            data = request.get_json()
+            usuario = data.get('user')
+            password = data.get('pass')
+        else:
+            usuario = request.form.get('user')
+            password = request.form.get('pass')
+
+        if not usuario or not password:
+            return {"ok": False, "error": "Faltan credenciales"}, 400
 
         conn = pyodbc.connect(conn_str)
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT id, nombre_negocio FROM dbo.clientes
+            SELECT id, nombre_negocio 
+            FROM dbo.clientes
             WHERE usuario_login = ? AND password_hash = ?
         """, (usuario, password))
         row = cursor.fetchone()
         conn.close()
 
         if row:
-            return {"ok": True, "dueno_id": row.id, "nombre_negocio": row.nombre_negocio}
+            return {
+                "ok": True,
+                "dueno_id": row.id,
+                "nombre": row.nombre_negocio
+            }
         else:
             return {"ok": False, "error": "Usuario o contraseña incorrectos"}, 401
+
     except Exception as e:
         return {"ok": False, "error": str(e)}, 500
 
