@@ -2,11 +2,16 @@ from flask import Flask, request
 from flask_cors import CORS
 import pyodbc
 
+
+
 app = Flask(__name__)
-CORS(app, supports_credentials=True, origins=[
-    "https://kind-desert-05fafcb0f.2.azurestaticapps.net",
-    "https://kind-desert-05fafcb0f.2.azurestaticapps.net/*"
-])
+CORS(app, supports_credentials=True, origins="*")
+
+
+@app.route('/ping')
+def ping():
+    return {"ok": True, "msg": "API GolControl activa ✅"}
+
 
 # Conexión a Azure SQL
 conn_str = (
