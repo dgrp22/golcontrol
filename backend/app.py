@@ -137,49 +137,6 @@ def reservar():
         return {"ok": False, "error": str(e)}, 500
 
 
-
-# --- Registrar abono ---
-@app.route('/abonar', methods=['POST'])
-def abonar():
-    try:
-        data = request.json
-        reserva_id = data["reserva_id"]
-        monto = float(data["monto_abono"])
-
-        conn = pyodbc.connect(conn_str)
-        cursor = conn.cursor()
-
-        # Insertar abono
-        cursor.execute("""
-            INSERT INTO dbo.abonos (reserva_id, monto_abono, fecha_abono)
-            VALUES (?, ?, GETDATE())
-        """, (reserva_id, monto))
-
-        # Calcular total de abonos
-        cursor.execute("SELECT SUM(monto_abono) FROM dbo.abonos WHERE reserva_id = ?", (reserva_id,))
-        total_abonos = cursor.fetchone()[0] or 0
-
-        # Obtener precio total de la reserva
-        cursor.execute("SELECT precio_total FROM dbo.reservas WHERE id = ?", (reserva_id,))
-        precio_total = cursor.fetchone()[0]
-
-        # Calcular estado_pago
-        if total_abonos == 0:
-            estado_pago = "No Abono"
-        elif total_abonos < precio_total:
-            estado_pago = "Parcial"
-        else:
-            estado_pago = "Pagado"
-
-        # Actualizar reservas
-        cursor.execute("UPDATE dbo.reservas SET abono=?, estado_pago=? WHERE id=?", (total_abonos, estado_pago, reserva_id))
-        conn.commit()
-        conn.close()
-
-        return {"ok": True, "msg": "Abono registrado correctamente", "total_abonos": total_abonos, "estado_pago": estado_pago}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}, 500
-
 # --- Obtener reservas por fecha y cancha ---
 @app.route('/reservas', methods=['GET'])
 def get_reservas():
