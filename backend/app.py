@@ -94,17 +94,32 @@ def reservar():
 
         conn = pyodbc.connect(conn_str)
         cursor = conn.cursor()
+
+        # Insertar la reserva
         cursor.execute("""
             INSERT INTO dbo.reservas 
             (dueno_id, cancha_id, fecha, hora_inicio, hora_fin, nombre_cliente, celular, abono, precio_total, estado_pago, estado_reserva)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (dueno_id, cancha_id, fecha, hora_inicio, hora_fin, nombre, celular, abono, precio, estado_pago, estado_reserva))
+
+        # Obtener el ID de la reserva recién creada
+        cursor.execute("SELECT SCOPE_IDENTITY()")
+        reserva_id = cursor.fetchone()[0]
+
+        # Si hay abono, registrar también en dbo.abonos
+        if abono > 0:
+            cursor.execute("""
+                INSERT INTO dbo.abonos (reserva_id, monto_abono, fecha_abono)
+                VALUES (?, ?, GETDATE())
+            """, (reserva_id, abono))
+
         conn.commit()
         conn.close()
 
         return {"ok": True, "msg": "Reserva guardada correctamente"}
     except Exception as e:
         return {"ok": False, "error": str(e)}, 500
+
 
 # --- Registrar abono ---
 @app.route('/abonar', methods=['POST'])
