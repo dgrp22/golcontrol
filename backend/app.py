@@ -203,6 +203,77 @@ def get_reservas():
         return {"ok": True, "reservas": result}
     except Exception as e:
         return {"ok": False, "error": str(e)}, 500
+    
+# --- Registrar abono adicional ---
+@app.route('/abonar', methods=['POST'])
+def abonar():
+    try:
+        data = request.json
+        reserva_id = data['reserva_id']
+        monto_abono = float(data['monto_abono'])
+
+        conn = pyodbc.connect(conn_str)
+        cursor = conn.cursor()
+
+        # Insertar abono individual
+        cursor.execute("""
+            INSERT INTO dbo.abonos (reserva_id, monto_abono, fecha_abono)
+            VALUES (?, ?, GETDATE())
+        """, (reserva_id, monto_abono))
+
+        # Actualizar total abonado
+        cursor.execute("SELECT SUM(monto_abono) FROM dbo.abonos WHERE reserva_id=?", (reserva_id,))
+        total_abonos = cursor.fetchone()[0] or 0
+
+        # Obtener precio total
+        cursor.execute("SELECT precio_total FROM dbo.reservas WHERE id=?", (reserva_id,))
+        precio_total = cursor.fetchone()[0] or 0
+
+        # Determinar estado
+        if total_abonos == 0:
+            estado_pago = "No Abono"
+        elif total_abonos < precio_total:
+            estado_pago = "Parcial"
+        else:
+            estado_pago = "Pagado"
+
+        # Actualizar reserva
+        cursor.execute("""
+            UPDATE dbo.reservas
+            SET abono=?, estado_pago=?
+            WHERE id=?
+        """, (total_abonos, estado_pago, reserva_id))
+
+        conn.commit()
+        conn.close()
+
+        return {"ok": True, "msg": "Abono registrado", "total_abonos": total_abonos, "estado_pago": estado_pago}
+
+    except Exception as e:
+        return {"ok": False, "error": str(e)}, 500
+
+
+# --- Anular reserva ---
+@app.route('/anular_reserva', methods=['POST'])
+def anular_reserva():
+    try:
+        data = request.json
+        reserva_id = data['reserva_id']
+
+        conn = pyodbc.connect(conn_str)
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE dbo.reservas 
+            SET estado_reserva='Anulada'
+            WHERE id=?
+        """, (reserva_id,))
+        conn.commit()
+        conn.close()
+
+        return {"ok": True, "msg": "Reserva anulada correctamente"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}, 500
+
 
 if __name__ == "__main__":
     app.run(debug=True)
