@@ -319,39 +319,54 @@ viewDayHistory.onclick = async () => {
     };
   });
 
-	// Eliminar reserva
+	// --- Eliminar reserva ---
 	dayHistoryContent.querySelectorAll(".btn-eliminar").forEach(btn => {
 	btn.onclick = async () => {
 		if (!confirm("¿Anular esta reserva?")) return;
+	
 		try {
+		const reservaId = btn.dataset.id;
 		const res = await fetch("https://golcontrol-g7gkhdbbg2hbgma8.canadacentral-01.azurewebsites.net/anular_reserva", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ reserva_id: btn.dataset.id })
+			body: JSON.stringify({ reserva_id: reservaId })
 		});
+	
 		const data = await res.json();
-		if (!data.ok) throw new Error(data.error || "Error anular");
+		if (!data.ok) throw new Error(data.error || "Error al anular reserva");
 	
 		alert("✅ Reserva anulada correctamente");
 	
-		// 🔹 Actualizar la data local eliminando la reserva anulada
+		// 🔹 1. Eliminar visualmente la tarjeta del historial
+		const card = btn.closest(".reserva-card");
+		if (card) card.remove();
+	
+		// 🔹 2. Eliminar del objeto 'reservas' en memoria
 		const key = dateKey(lastYear, lastMonth, lastDay);
 		const cancha = activeCancha;
-		Object.keys(reservas[key][cancha]).forEach(hora => {
-			if (reservas[key][cancha][hora]?.reserva_id == btn.dataset.id) {
-			delete reservas[key][cancha][hora]; // elimina del mapa local
+		if (reservas[key] && reservas[key][cancha]) {
+			for (let hora in reservas[key][cancha]) {
+			const r = reservas[key][cancha][hora];
+			if (r && r.reserva_id == reservaId) {
+				delete reservas[key][cancha][hora];
 			}
-		});
+			}
+		}
 	
-		// 🔹 Recargar la vista de horas
+		// 🔹 3. Repintar las horas del día actual
 		renderHoras(lastDay, lastMonth, lastYear, cancha);
 	
-		dayHistoryModal.style.display = "none";
+		// 🔹 4. Si no quedan reservas, cerrar modal
+		if (!dayHistoryContent.querySelector(".reserva-card")) {
+			dayHistoryModal.style.display = "none";
+		}
+	
 		} catch (err) {
 		alert("❌ " + err.message);
 		}
 	};
 	});
+
 
 
   modal.style.display = "none";
