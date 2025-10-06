@@ -3,7 +3,7 @@ from flask_cors import CORS
 import pyodbc
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "https://kind-desert-05fafcb0f.2.azurestaticapps.net"}})
+CORS(app, supports_credentials=True, origins=["https://kind-desert-05fafcb0f.2.azurestaticapps.net"])
 
 # Conexión a Azure SQL
 conn_str = (
@@ -292,3 +292,4 @@ def anular_reserva():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
