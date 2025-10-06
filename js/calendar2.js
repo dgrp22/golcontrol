@@ -319,26 +319,40 @@ viewDayHistory.onclick = async () => {
     };
   });
 
-  // Eliminar reserva
-  dayHistoryContent.querySelectorAll(".btn-eliminar").forEach(btn => {
-    btn.onclick = async () => {
-      if (!confirm("¿Anular esta reserva?")) return;
-      try {
-        const res = await fetch("https://golcontrol-g7gkhdbbg2hbgma8.canadacentral-01.azurewebsites.net/anular_reserva", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reserva_id: btn.dataset.id })
-        });
-        const data = await res.json();
-        if (!data.ok) throw new Error(data.error || "Error anular");
-        alert("✅ Reserva anulada correctamente");
-        await openModal(lastDay, lastMonth, lastYear);
-        dayHistoryModal.style.display = "none";
-      } catch (err) {
-        alert("❌ " + err.message);
-      }
-    };
-  });
+	// Eliminar reserva
+	dayHistoryContent.querySelectorAll(".btn-eliminar").forEach(btn => {
+	btn.onclick = async () => {
+		if (!confirm("¿Anular esta reserva?")) return;
+		try {
+		const res = await fetch("https://golcontrol-g7gkhdbbg2hbgma8.canadacentral-01.azurewebsites.net/anular_reserva", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ reserva_id: btn.dataset.id })
+		});
+		const data = await res.json();
+		if (!data.ok) throw new Error(data.error || "Error anular");
+	
+		alert("✅ Reserva anulada correctamente");
+	
+		// 🔹 Actualizar la data local eliminando la reserva anulada
+		const key = dateKey(lastYear, lastMonth, lastDay);
+		const cancha = activeCancha;
+		Object.keys(reservas[key][cancha]).forEach(hora => {
+			if (reservas[key][cancha][hora]?.reserva_id == btn.dataset.id) {
+			delete reservas[key][cancha][hora]; // elimina del mapa local
+			}
+		});
+	
+		// 🔹 Recargar la vista de horas
+		renderHoras(lastDay, lastMonth, lastYear, cancha);
+	
+		dayHistoryModal.style.display = "none";
+		} catch (err) {
+		alert("❌ " + err.message);
+		}
+	};
+	});
+
 
   modal.style.display = "none";
   dayHistoryModal.style.display = "flex";
