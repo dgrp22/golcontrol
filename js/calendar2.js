@@ -96,10 +96,10 @@ async function openModal(day, month, year) {
   try {
     const res = await fetch(`https://golcontrol-g7gkhdbbg2hbgma8.canadacentral-01.azurewebsites.net/reservas?fecha=${fecha}&cancha_id=${cancha_id}`);
     const data = await res.json();
-    if (data.ok) {
-      reservas[fecha] = {};
-      reservas[fecha][activeCancha] = {};
+    reservas[fecha] = {};
+    reservas[fecha][activeCancha] = {};
 
+    if (data.ok) {
       data.reservas.forEach(r => {
         const startHour = parseInt(r.hora_inicio.split(":")[0]);
         const endHour = parseInt(r.hora_fin.split(":")[0]) - 1;
@@ -295,7 +295,7 @@ viewDayHistory.onclick = async () => {
     dayHistoryContent.appendChild(card);
   });
 
-  // Pagar saldo
+  // --- Abonar ---
   dayHistoryContent.querySelectorAll(".btn-pagar").forEach(btn => {
     btn.onclick = async () => {
       const monto = prompt("Monto del abono (S/):", "0");
@@ -319,43 +319,66 @@ viewDayHistory.onclick = async () => {
     };
   });
 
-// --- Eliminar reserva ---
-dayHistoryContent.querySelectorAll(".btn-eliminar").forEach(btn => {
-  btn.onclick = async () => {
-    if (!confirm("¿Anular esta reserva?")) return;
+  // --- Eliminar reserva (corregido) ---
+  dayHistoryContent.querySelectorAll(".btn-eliminar").forEach(btn => {
+    btn.onclick = async () => {
+      if (!confirm("¿Anular esta reserva?")) return;
 
-    try {
-      const reservaId = btn.dataset.id;
-      const res = await fetch("https://golcontrol-g7gkhdbbg2hbgma8.canadacentral-01.azurewebsites.net/anular_reserva", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reserva_id: reservaId })
-      });
+      try {
+        const reservaId = btn.dataset.id;
+        const res = await fetch("https://golcontrol-g7gkhdbbg2hbgma8.canadacentral-01.azurewebsites.net/anular_reserva", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reserva_id: reservaId })
+        });
 
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error al anular reserva");
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Error al anular reserva");
 
-      alert("✅ Reserva anulada correctamente");
+        alert("✅ Reserva anulada correctamente");
 
-      // 1️⃣ Eliminar visualmente la tarjeta del historial
-      const card = btn.closest(".reserva-card");
-      if (card) card.remove();
+        // 🔹 Actualizar visual e información
+        const fecha = dateKey(lastYear, lastMonth, lastDay);
+        const cancha_id = activeCancha === "C1" ? 1 : activeCancha === "C2" ? 2 : 3;
+        const reload = await fetch(`https://golcontrol-g7gkhdbbg2hbgma8.canadacentral-01.azurewebsites.net/reservas?fecha=${fecha}&cancha_id=${cancha_id}`);
+        const reloadData = await reload.json();
 
-      // 2️⃣ Refrescar reservas desde backend
-      await openModal(lastDay, lastMonth, lastYear);
+        reservas[fecha] = {};
+        reservas[fecha][activeCancha] = {};
 
-      // 3️⃣ Cerrar historial y reabrir el modal actualizado
-      dayHistoryModal.style.display = "none";
-      modal.style.display = "flex";
+        if (reloadData.ok) {
+          reloadData.reservas.forEach(r => {
+            const startHour = parseInt(r.hora_inicio.split(":")[0]);
+            const endHour = parseInt(r.hora_fin.split(":")[0]) - 1;
+            let estado = "available";
+            if (r.estado_pago === "Pagado") estado = "reserved";
+            else if (r.estado_pago === "Parcial") estado = "partial";
+            else estado = "noabono";
 
-    } catch (err) {
-      alert("❌ " + err.message);
-    }
-  };
-});
+            for (let h = startHour; h <= endHour; h++) {
+              reservas[fecha][activeCancha][h] = {
+                reserva_id: r.reserva_id || null,
+                cliente: r.nombre_cliente,
+                celular: r.celular,
+                cancha: activeCancha,
+                abono: r.abono,
+                costo: r.precio_total,
+                estado,
+                startHour,
+                duracion: endHour - startHour + 1
+              };
+            }
+          });
+        }
 
+        renderHoras(lastDay, lastMonth, lastYear, activeCancha);
+        btn.closest(".reserva-card").remove();
 
-
+      } catch (err) {
+        alert("❌ " + err.message);
+      }
+    };
+  });
 
   modal.style.display = "none";
   dayHistoryModal.style.display = "flex";
